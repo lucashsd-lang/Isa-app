@@ -213,7 +213,7 @@ function Input({label,required,hint,...p}){
         onBlur={e=>{setFoc(false);p.onBlur?.(e);}}
         style={{background:C.white,border:`1.5px solid ${foc?C.accent:C.border}`,
           borderRadius:10,padding:"11px 14px",fontSize:15,color:C.ink,
-          outline:"none",width:"100%",minWidth:0,minHeight:44,
+          outline:"none",width:"100%",minWidth:0,minHeight:44,textAlign:"left",
           transition:"border-color .2s ease-out",fontFamily:F,...p.style}}/>
       {hint&&<div style={{fontSize:12,color:C.muted,marginTop:4}}>{hint}</div>}
     </div>
@@ -371,14 +371,18 @@ function Screen({open,onClose,title,children,action}){
 
 function InfoRow({icon,label,value,accent,last}){
   return(
-    <div style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",
+    <div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 0",
       borderBottom:last?"none":`1px solid ${C.border}`}}>
-      <div style={{width:32,height:32,borderRadius:8,background:C.accentBg,
+      <div style={{width:36,height:36,borderRadius:10,background:C.accentBg,
         display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-        <Ic n={icon} size={15} color={C.accent} w={2}/>
+        <Ic n={icon} size={16} color={C.accent} w={2}/>
       </div>
-      <span style={{flex:1,color:C.sub,fontSize:14}}>{label}</span>
-      <span style={{fontWeight:600,fontSize:14,color:accent||C.ink,textAlign:"right",maxWidth:"58%",wordBreak:"break-word"}}>{value}</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase",
+          letterSpacing:.5,marginBottom:2,textAlign:"left"}}>{label}</div>
+        <div style={{fontSize:14,fontWeight:600,color:accent||C.ink,textAlign:"left",
+          wordBreak:"break-word"}}>{value||"—"}</div>
+      </div>
     </div>
   );
 }
@@ -948,12 +952,10 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
           }}>
             {servicos.map(s=><option key={s.id}>{s.nome}</option>)}
           </Sel>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <Input label="Início" type="time" value={form.hora} onChange={e=>setForm({...form,hora:e.target.value})}/>
-            <Input label="Término" type="time" value={form.horaFim} onChange={e=>setForm({...form,horaFim:e.target.value})}/>
-          </div>
+          <Input label="Horário de início" type="time" value={form.hora} onChange={e=>setForm({...form,hora:e.target.value})}/>
+          <Input label="Horário de término" type="time" value={form.horaFim} onChange={e=>setForm({...form,horaFim:e.target.value})}/>
           <Input label="Valor (R$)" required type="number" inputMode="decimal" value={form.valor}
-            onChange={e=>setForm({...form,valor:e.target.value})} placeholder="0,00"/>
+            onChange={e=>setForm({...form,valor:e.target.value})} placeholder="Ex: 150,00"/>
           <Btn full icon="check" onClick={salvar} disabled={!form.cliente||!form.valor}>Confirmar</Btn>
         </div>
       </Drawer>
@@ -1049,22 +1051,24 @@ function Clientes({clis,setClis,ags,setAgs,toast,servicos}){
         {filtrados.map(c=>{
           const gasto=totalGasto(c.nome);
           return(
-            <Card key={c.id} onClick={()=>setDetail(c.id)} style={{cursor:"pointer"}}>
+            <Card key={c.id} onClick={()=>setDetail(c.id)} style={{cursor:"pointer",padding:"14px 16px"}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
                 <div style={{width:44,height:44,borderRadius:"50%",flexShrink:0,
                   background:C.accentLt,display:"flex",alignItems:"center",
-                  justifyContent:"center",fontSize:14,fontWeight:700,color:C.accent}}>
+                  justifyContent:"center",fontSize:15,fontWeight:800,color:C.accent}}>
                   {inits(c.nome)}
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,color:C.ink,fontSize:14.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>
+                  <div style={{fontWeight:700,color:C.ink,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {c.nome}
                   </div>
-                  <div style={{color:C.muted,fontSize:12.5}}>{c.tel} · {c.visitas} visitas</div>
+                  <div style={{color:C.muted,fontSize:12.5,marginTop:2}}>
+                    {c.tel||"Sem telefone"} · {c.visitas} visita{c.visitas!==1?"s":""}
+                  </div>
                 </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{color:C.accent,fontWeight:700,fontSize:14}}>{brl(gasto)}</div>
-                  <Ic n="chevR" size={14} color={C.border} w={2} style={{marginTop:3}}/>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  {gasto>0&&<span style={{fontSize:13,fontWeight:700,color:C.accent}}>{brl(gasto)}</span>}
+                  <Ic n="chevR" size={16} color={C.muted} w={2}/>
                 </div>
               </div>
             </Card>
@@ -1103,74 +1107,89 @@ function Clientes({clis,setClis,ags,setAgs,toast,servicos}){
             {servicos.map(s=><option key={s.id}>{s.nome}</option>)}
           </Sel>
           <Input label="Valor (R$)" required type="number" inputMode="decimal" value={servForm.valor}
-            onChange={e=>setServForm({...servForm,valor:e.target.value})} placeholder="0,00"/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <Input label="Data" type="date" value={servForm.data} onChange={e=>setServForm({...servForm,data:e.target.value})}/>
-            <Input label="Horário" type="time" value={servForm.hora} onChange={e=>setServForm({...servForm,hora:e.target.value})}/>
-          </div>
+            onChange={e=>setServForm({...servForm,valor:e.target.value})} placeholder="Ex: 150,00"/>
+          <Input label="Data" type="date" value={servForm.data} onChange={e=>setServForm({...servForm,data:e.target.value})}/>
+          <Input label="Horário" type="time" value={servForm.hora} onChange={e=>setServForm({...servForm,hora:e.target.value})}/>
           <Btn full icon="check" variant="primary" onClick={lancarServico} disabled={!servForm.valor}>Lançar Serviço</Btn>
         </div>
       </Drawer>
 
       {/* Profile */}
       {cliSel&&(
-        <Screen open={!!detail} onClose={()=>setDetail(null)} title={cliSel.nome}
-          action={
-            <button onClick={()=>setServOpen(cliSel.id)} style={{height:36,padding:"0 12px",borderRadius:8,
-              border:`1.5px solid ${C.accent}`,background:C.accentBg,color:C.accent,
-              fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6,fontFamily:F}}>
-              <Ic n="service" size={14} color={C.accent} w={2}/>+ Serviço
-            </button>
-          }>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 0 8px"}}>
-              <div style={{width:56,height:56,borderRadius:"50%",flexShrink:0,
+        <Screen open={!!detail} onClose={()=>setDetail(null)} title={cliSel.nome}>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+            {/* Profile header */}
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <div style={{width:60,height:60,borderRadius:"50%",flexShrink:0,
                 background:C.accentLt,display:"flex",alignItems:"center",
-                justifyContent:"center",fontSize:20,fontWeight:700,color:C.accent}}>
+                justifyContent:"center",fontSize:20,fontWeight:800,color:C.accent}}>
                 {inits(cliSel.nome)}
               </div>
-              <div>
-                <div style={{fontSize:20,fontWeight:800,color:C.ink}}>{cliSel.nome}</div>
-                <div style={{display:"flex",gap:6,marginTop:5,flexWrap:"wrap"}}>
-                  <Badge color={C.green}>{cliSel.visitas} visitas</Badge>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:20,fontWeight:800,color:C.ink,marginBottom:4,textAlign:"left"}}>{cliSel.nome}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <Badge color={C.green}>{cliSel.visitas} visita{cliSel.visitas!==1?"s":""}</Badge>
                   <Badge color={C.accent}>{brl(totalGasto(cliSel.nome))}</Badge>
                 </div>
               </div>
             </div>
+
+            {/* Contact info */}
             <Card>
-              <InfoRow icon="phone" label="Telefone"    value={cliSel.tel}/>
-              <InfoRow icon="mail"  label="E-mail"      value={cliSel.email||"—"}/>
-              <InfoRow icon="star"  label="Aniversário" value={cliSel.nasc?fmtBR(cliSel.nasc):"—"}/>
+              <InfoRow icon="phone" label="Telefone"      value={cliSel.tel||"—"}/>
+              <InfoRow icon="mail"  label="E-mail"        value={cliSel.email||"—"}/>
+              <InfoRow icon="star"  label="Aniversário"   value={cliSel.nasc?fmtBR(cliSel.nasc):"—"}/>
               <InfoRow icon="tag"   label="Total investido" value={brl(totalGasto(cliSel.nome))} accent={C.accent} last/>
-              {cliSel.obs&&<div style={{marginTop:12,background:C.accentBg,borderRadius:8,padding:"10px 12px",borderLeft:`3px solid ${C.accent}`,fontSize:13,color:C.sub,lineHeight:1.6}}>{cliSel.obs}</div>}
+              {cliSel.obs&&(
+                <div style={{marginTop:12,background:C.accentBg,borderRadius:8,
+                  padding:"10px 12px",borderLeft:`3px solid ${C.accent}`,
+                  fontSize:13,color:C.sub,lineHeight:1.6,textAlign:"left"}}>
+                  {cliSel.obs}
+                </div>
+              )}
             </Card>
 
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{fontWeight:700,fontSize:15,color:C.ink}}>Histórico de serviços</div>
-              <button onClick={()=>{setDetail(null);setServOpen(cliSel.id);}}
-                style={{fontSize:13,fontWeight:600,color:C.accent,background:"none",border:"none",display:"flex",alignItems:"center",gap:5,fontFamily:F}}>
-                <Ic n="plus" size={13} color={C.accent} w={2.5}/>Lançar serviço
-              </button>
-            </div>
-            {histSel.length===0&&<Card style={{textAlign:"center",padding:28}}><span style={{color:C.muted,fontSize:14}}>Nenhum serviço registrado</span></Card>}
-            {histSel.map(a=>(
-              <Card key={a.id} style={{padding:"12px 14px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,color:C.ink,fontSize:14,marginBottom:3}}>{a.servico}</div>
-                    <div style={{color:C.muted,fontSize:12.5}}>{fmtBR(a.data)} · {a.hora}</div>
-                  </div>
-                  <div style={{textAlign:"right",flexShrink:0}}>
-                    <div style={{color:C.accent,fontWeight:700,fontSize:14,marginBottom:4}}>{brl(a.valor)}</div>
-                    <Badge color={SC[a.status]} bg={SBG[a.status]}>{SL[a.status]}</Badge>
-                  </div>
+            {/* Service history */}
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{fontWeight:700,fontSize:15,color:C.ink,textAlign:"left"}}>Histórico de serviços</div>
+                <button onClick={()=>{setDetail(null);setServOpen(cliSel.id);}}
+                  style={{fontSize:13,fontWeight:600,color:C.accent,background:"none",border:"none",
+                    display:"flex",alignItems:"center",gap:5,fontFamily:F,cursor:"pointer"}}>
+                  <Ic n="plus" size={13} color={C.accent} w={2.5}/>Lançar serviço
+                </button>
+              </div>
+              {histSel.length===0?(
+                <div style={{padding:"24px 16px",border:`1.5px dashed ${C.border}`,borderRadius:12,background:C.white}}>
+                  <div style={{fontSize:14,color:C.muted,textAlign:"left"}}>Nenhum serviço registrado ainda.</div>
+                  <button onClick={()=>{setDetail(null);setServOpen(cliSel.id);}}
+                    style={{marginTop:10,fontSize:13,fontWeight:700,color:C.accent,background:"none",border:"none",
+                      padding:0,fontFamily:F,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                    <Ic n="plus" size={13} color={C.accent} w={2.5}/>Lançar primeiro serviço
+                  </button>
                 </div>
-              </Card>
-            ))}
-
-            <div style={{marginTop:8}}>
-              <Btn variant="danger" full icon="trash" onClick={()=>setConfirm(cliSel.id)}>Remover cliente</Btn>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {histSel.map(a=>(
+                    <Card key={a.id} style={{padding:"12px 14px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,color:C.ink,fontSize:14,marginBottom:3,textAlign:"left"}}>{a.servico}</div>
+                          <div style={{color:C.muted,fontSize:12.5,textAlign:"left"}}>{fmtBR(a.data)} · {a.hora}</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                          <div style={{color:C.accent,fontWeight:700,fontSize:14}}>{brl(a.valor)}</div>
+                          <Badge color={SC[a.status]} bg={SBG[a.status]}>{SL[a.status]}</Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
+
+            <Btn variant="danger" full icon="trash" onClick={()=>setConfirm(cliSel.id)}>Remover cliente</Btn>
           </div>
         </Screen>
       )}
@@ -1314,15 +1333,12 @@ function Estoque({prods,setProds,toast}){
               color:movOpen.tipo==="entrada"?C.green:C.red}}>
               {movOpen.tipo==="entrada"?"Reposição de estoque ao receber produtos.":"Registra o uso ou consumo do produto."}
             </div>
-            {/* Qty + unit side by side */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-              <div style={{minWidth:0}}>
-                <FL>Quantidade</FL>
-                <Stepper value={movQtd} onChange={setMovQtd} min={1} und={movUnd}/>
-              </div>
-              <Sel label="Unidade" value={movUnd} onChange={e=>setMovUnd(e.target.value)}>
-                {UNITS.map(u=><option key={u}>{u}</option>)}
-              </Sel>
+            <Sel label="Unidade" value={movUnd} onChange={e=>setMovUnd(e.target.value)}>
+              {UNITS.map(u=><option key={u}>{u}</option>)}
+            </Sel>
+            <div>
+              <FL>Quantidade</FL>
+              <Stepper value={movQtd} onChange={setMovQtd} min={1} und={movUnd}/>
             </div>
             <div style={{fontSize:12.5,color:C.muted}}>
               Estoque atual: <strong style={{color:C.ink}}>{movOpen.prod.qtd} {movOpen.prod.und}</strong>
@@ -1364,29 +1380,23 @@ function Estoque({prods,setProds,toast}){
       {/* Product form */}
       <Drawer open={formOpen} onClose={()=>setFormOpen(false)} title={editId?"Editar Produto":"Novo Produto"}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <Input label="Nome do produto" required value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})}/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <Sel label="Categoria" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})}>
-              {["Cabelo","Coloração","Unhas","Estética","Pele","Outros"].map(c=><option key={c}>{c}</option>)}
-            </Sel>
-            <Input label="Marca" value={form.marca} onChange={e=>setForm({...form,marca:e.target.value})}/>
+          <Input label="Nome do produto" required value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} placeholder="Ex: Shampoo Hidratante"/>
+          <Sel label="Categoria" value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})}>
+            {["Cabelo","Coloração","Unhas","Estética","Pele","Outros"].map(c=><option key={c}>{c}</option>)}
+          </Sel>
+          <Input label="Marca" value={form.marca} onChange={e=>setForm({...form,marca:e.target.value})} placeholder="Ex: L'Oréal"/>
+          <Sel label="Unidade de medida" value={form.und} onChange={e=>setForm({...form,und:e.target.value})}>
+            {UNITS.map(u=><option key={u}>{u}</option>)}
+          </Sel>
+          <Input label="Custo (R$)" required type="number" value={form.custo}
+            onChange={e=>setForm({...form,custo:e.target.value})} placeholder="0,00"/>
+          <div>
+            <FL>Quantidade inicial</FL>
+            <Stepper value={Number(form.qtd)||0} onChange={v=>setForm({...form,qtd:v})} und={form.und}/>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <div style={{minWidth:0}}>
-              <FL>Quantidade inicial</FL>
-              <Stepper value={Number(form.qtd)||0} onChange={v=>setForm({...form,qtd:v})} und={form.und}/>
-            </div>
-            <div style={{minWidth:0}}>
-              <FL>Mínimo</FL>
-              <Stepper value={Number(form.min)||0} onChange={v=>setForm({...form,min:v})} und={form.und}/>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <Input label="Custo (R$)" required type="number" value={form.custo}
-              onChange={e=>setForm({...form,custo:e.target.value})} placeholder="0,00"/>
-            <Sel label="Unidade" value={form.und} onChange={e=>setForm({...form,und:e.target.value})}>
-              {UNITS.map(u=><option key={u}>{u}</option>)}
-            </Sel>
+          <div>
+            <FL>Estoque mínimo</FL>
+            <Stepper value={Number(form.min)||0} onChange={v=>setForm({...form,min:v})} und={form.und}/>
           </div>
           <Btn full icon="check" onClick={salvar} disabled={!form.nome}>{editId?"Salvar":"Cadastrar"}</Btn>
         </div>
