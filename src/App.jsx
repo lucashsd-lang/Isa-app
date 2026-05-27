@@ -11,17 +11,17 @@ const supabase = createClient(
 const F = "'Inter','Segoe UI',system-ui,sans-serif";
 
 const C = {
-  accent:   "#7C3AED",
-  accentBg: "#EDE9FE",
-  accentLt: "#DDD6FE",
-  bg:       "#F8F7FF",
-  bgAlt:    "#F1F0F7",
+  accent:   "#3B2A22",
+  accentBg: "#F5EDE9",
+  accentLt: "#EDD9CF",
+  bg:       "#FFFFFF",
+  bgAlt:    "#F7F5F4",
   white:    "#FFFFFF",
-  border:   "#E5E3F0",
-  borderDk: "#C4C0DB",
-  ink:      "#1A1523",
-  sub:      "#4A4558",
-  muted:    "#8B85A1",
+  border:   "#E8E0DC",
+  borderDk: "#C8B8B0",
+  ink:      "#1A0F0A",
+  sub:      "#5C4A42",
+  muted:    "#9C8880",
   green:    "#059669",
   greenBg:  "#D1FAE5",
   red:      "#DC2626",
@@ -53,6 +53,7 @@ function GS(){
       input,select,textarea{font-family:${F};}
       @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
       @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+      @keyframes slideFromLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
       ::-webkit-scrollbar{display:none;}
     `}</style>
   );
@@ -191,7 +192,7 @@ function Card({children,style={},onClick}){
 function FL({children,required}){
   return(
     <div style={{fontSize:11,fontWeight:700,letterSpacing:.6,color:C.sub,
-      textTransform:"uppercase",marginBottom:6,fontFamily:F}}>
+      textTransform:"uppercase",marginBottom:6,fontFamily:F,textAlign:"left",display:"block"}}>
       {children}{required&&<span style={{color:C.red,marginLeft:3}}>*</span>}
     </div>
   );
@@ -332,7 +333,7 @@ function Drawer({open,onClose,title,children}){
             <Ic n="x" size={16} color={C.sub}/>
           </button>
         </div>
-        <div style={{padding:"18px 20px 24px",overflow:"hidden"}}>{children}</div>
+        <div style={{padding:"18px 20px 28px"}}>{children}</div>
       </div>
     </div>
   );
@@ -644,7 +645,7 @@ function FinalizarScreen({open,agFin,onClose,prodUsados,setProdUsados,servicosEx
 }
 
 /* ─── AGENDA ─────────────────────────────────────────────────────────────── */
-function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
+function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
   const [weekOffset,setWeekOffset]=useState(0);
   const [sel,setSel]=useState(TODAY);
   const [formOpen,setFormOpen]=useState(false);
@@ -735,10 +736,20 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
   return(
     <div>
       {/* Month header + week navigation */}
-      <div style={{padding:"16px 16px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <Ic n="calendar" size={16} color={C.ink} w={2}/>
-          <span style={{fontSize:16,fontWeight:700,color:C.ink,fontFamily:F}}>{weekLabel}</span>
+      <div style={{padding:"14px 16px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {onMenu&&(
+            <button onClick={onMenu} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border}`,
+              background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2} strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          )}
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <Ic n="calendar" size={15} color={C.ink} w={2}/>
+            <span style={{fontSize:15,fontWeight:700,color:C.ink,fontFamily:F}}>{weekLabel}</span>
+          </div>
         </div>
         <div style={{display:"flex",gap:4}}>
           <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1688,6 +1699,56 @@ function Servicos({servicos,setServicos,toast}){
 }
 
 
+/* ─── SIDE MENU ──────────────────────────────────────────────────────────── */
+function SideDrawer({open,onClose,aba,setAba,alertas}){
+  useEffect(()=>{ if(open){ _openModal(); } return()=>{ _closeModal(); }; },[open]);
+  if(!open) return null;
+  return(
+    <div style={{position:"absolute",inset:0,zIndex:850}}>
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)"}}/>
+      <div style={{position:"absolute",top:0,left:0,bottom:0,width:"78%",maxWidth:280,
+        background:C.white,display:"flex",flexDirection:"column",
+        boxShadow:"4px 0 24px rgba(0,0,0,.14)",animation:"slideFromLeft .22s ease"}}>
+        <div style={{padding:"28px 20px 22px",background:C.accent}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,.15)",
+              display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Ic n="scissors" size={20} color="#fff" w={2}/>
+            </div>
+            <div>
+              <div style={{fontSize:17,fontWeight:800,color:"#fff",letterSpacing:-.3}}>Estúdio</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.65)"}}>Gestão completa</div>
+            </div>
+          </div>
+        </div>
+        <div style={{flex:1,padding:"10px 8px",overflowY:"auto"}}>
+          {NAV.map(t=>{
+            const active=aba===t.id,badge=t.id==="estoque"&&alertas>0;
+            return(
+              <button key={t.id} onClick={()=>{setAba(t.id);onClose();}}
+                style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 14px",
+                  borderRadius:10,border:"none",textAlign:"left",fontFamily:F,marginBottom:2,
+                  background:active?C.accentBg:"transparent",cursor:"pointer"}}>
+                <div style={{position:"relative",flexShrink:0}}>
+                  <Ic n={t.icon} size={20} color={active?C.accent:C.muted} w={active?2.2:1.75}/>
+                  {badge&&<div style={{position:"absolute",top:-2,right:-3,width:8,height:8,
+                    borderRadius:"50%",background:C.red,border:`2px solid ${C.white}`}}/>}
+                </div>
+                <span style={{fontSize:15,fontWeight:active?700:500,
+                  color:active?C.accent:C.ink,flex:1}}>{t.label}</span>
+                {active&&<Ic n="chevR" size={14} color={C.accent} w={2.5}/>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{padding:"16px 20px",borderTop:`1px solid ${C.border}`}}>
+          <div style={{fontSize:12,color:C.muted,fontFamily:F}}>Estúdio App · v1.0</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── APP ────────────────────────────────────────────────────────────────── */
 const NAV=[
   {id:"agenda",    label:"Agenda",    icon:"calendar"},
@@ -1715,6 +1776,7 @@ export default function App(){
   const anyModal = useAnyModalOpen();
   const [aba,setAba]=useState("agenda");
   const [loading,setLoading]=useState(true);
+  const [menuOpen,setMenuOpen]=useState(false);
   const [ags,setAgs]=useState([]);
   const [clis,setClis]=useState([]);
   const [prods,setProds]=useState([]);
@@ -1855,12 +1917,16 @@ export default function App(){
 
       {/* Content */}
       <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-        {aba==="agenda"    &&<Agenda     ags={ags}   setAgs={dbSetAgs}   clis={clis} prods={prods} setProds={dbSetProds} toast={toast} servicos={servicos}/>}
+        {aba==="agenda"    &&<Agenda     ags={ags}   setAgs={dbSetAgs}   clis={clis} prods={prods} setProds={dbSetProds} toast={toast} servicos={servicos} onMenu={()=>setMenuOpen(true)}/>}
         {aba==="clientes"  &&<Clientes   clis={clis} setClis={dbSetClis} ags={ags} setAgs={dbSetAgs} toast={toast} servicos={servicos}/>}
         {aba==="estoque"   &&<Estoque    prods={prods} setProds={dbSetProds} toast={toast}/>}
         {aba==="servicos"  &&<Servicos   servicos={servicos} setServicos={dbSetServicos} toast={toast}/>}
         {aba==="relatorios"&&<Financeiro ags={ags} prods={prods}/>}
       </div>
+
+      {/* Side menu */}
+      <SideDrawer open={menuOpen} onClose={()=>setMenuOpen(false)}
+        aba={aba} setAba={setAba} alertas={alertas}/>
 
       {/* Bottom nav */}
       <div style={{background:C.white,borderTop:`1px solid ${C.border}`,display:anyModal?"none":"flex",flexShrink:0,paddingBottom:"env(safe-area-inset-bottom)"}}>
