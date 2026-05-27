@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 /* ─── CONSTANTS ──────────────────────────────────────────────────────────── */
-const F = "'Inter','Segoe UI',system-ui,sans-serif";
+const F = "'Nunito','Segoe UI',system-ui,sans-serif";
 
 const C = {
   accent:   "#3B2A22",
@@ -48,12 +48,16 @@ function GS(){
   return(
     <style>{`
       *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-      body{overscroll-behavior:none;}
-      button{cursor:pointer;font-family:${F};}
-      input,select,textarea{font-family:${F};}
+      html,body{-webkit-text-size-adjust:100%;}
+      body{overscroll-behavior:none;background:#fff;}
+      button{cursor:pointer;font-family:${F};touch-action:manipulation;}
+      input,select,textarea{font-family:${F};touch-action:manipulation;}
+      button:active{opacity:.72;transition:opacity .08s ease-in;}
       @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
       @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
       @keyframes slideFromLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+      @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+      @keyframes spin{to{transform:rotate(360deg)}}
       ::-webkit-scrollbar{display:none;}
     `}</style>
   );
@@ -208,8 +212,9 @@ function Input({label,required,hint,...p}){
         onFocus={e=>{setFoc(true);p.onFocus?.(e);}}
         onBlur={e=>{setFoc(false);p.onBlur?.(e);}}
         style={{background:C.white,border:`1.5px solid ${foc?C.accent:C.border}`,
-          borderRadius:8,padding:"10px 12px",fontSize:15,color:C.ink,
-          outline:"none",width:"100%",minWidth:0,transition:"border-color .15s",fontFamily:F,...p.style}}/>
+          borderRadius:10,padding:"11px 14px",fontSize:15,color:C.ink,
+          outline:"none",width:"100%",minWidth:0,minHeight:44,
+          transition:"border-color .2s ease-out",fontFamily:F,...p.style}}/>
       {hint&&<div style={{fontSize:12,color:C.muted,marginTop:4}}>{hint}</div>}
     </div>
   );
@@ -223,9 +228,10 @@ function Sel({label,children,...p}){
       <select {...p}
         onFocus={()=>setFoc(true)} onBlur={()=>setFoc(false)}
         style={{background:C.white,border:`1.5px solid ${foc?C.accent:C.border}`,
-          borderRadius:8,padding:"10px 12px",fontSize:15,color:C.ink,
+          borderRadius:10,padding:"11px 14px",fontSize:15,color:C.ink,
           outline:"none",appearance:"none",WebkitAppearance:"none",
-          width:"100%",minWidth:0,transition:"border-color .15s",fontFamily:F,...p.style}}>
+          width:"100%",minWidth:0,minHeight:44,
+          transition:"border-color .2s ease-out",fontFamily:F,...p.style}}>
         {children}
       </select>
     </div>
@@ -290,10 +296,11 @@ function Btn({children,variant="primary",onClick,full,disabled,style={},icon,siz
   return(
     <button onClick={onClick} disabled={disabled} style={{
       display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-      background:bg,color,border:bd,borderRadius:8,padding:sz.p,
-      fontSize:sz.fs,fontWeight:600,cursor:disabled?"not-allowed":"pointer",
+      background:bg,color,border:bd,borderRadius:10,padding:sz.p,
+      fontSize:sz.fs,fontWeight:700,cursor:disabled?"not-allowed":"pointer",
       opacity:disabled?.4:1,width:full?"100%":"auto",minHeight:44,
-      whiteSpace:"nowrap",fontFamily:F,flexShrink:0,...style}}>
+      whiteSpace:"nowrap",fontFamily:F,flexShrink:0,
+      transition:"opacity .15s ease-out",...style}}>
       {icon&&<Ic n={icon} size={sz.fs} color={color} w={2}/>}
       {children}
     </button>
@@ -677,10 +684,10 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
   const isNotAttended=a=>a.status==="agendado"||a.status==="confirmado";
 
   const SC={
-    agendado:   {label:"Agendada",  color:"#059669",bg:"#D1FAE5"},
-    confirmado: {label:"Confirmada",color:"#059669",bg:"#D1FAE5"},
-    concluido:  {label:"Concluída", color:"#6B7280",bg:"#F3F4F6"},
-    cancelado:  {label:"Cancelou",  color:"#DC2626",bg:"#FEE2E2"},
+    agendado:   {label:"Agendada",  color:"#059669",bg:"#D1FAE5",icon:"clock"},
+    confirmado: {label:"Confirmada",color:"#2563EB",bg:"#DBEAFE",icon:"check"},
+    concluido:  {label:"Concluída", color:"#6B7280",bg:"#F3F4F6",icon:"check"},
+    cancelado:  {label:"Cancelou",  color:"#DC2626",bg:"#FEE2E2",icon:"x"},
   };
 
   function salvar(){
@@ -752,10 +759,10 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
           </div>
         </div>
         <div style={{display:"flex",gap:4}}>
-          <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Ic n="chevL" size={16} color={C.ink} w={2}/>
           </button>
-          <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <Ic n="chevR" size={16} color={C.ink} w={2}/>
           </button>
         </div>
@@ -813,11 +820,17 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
           return(
             <button key={a.id} onClick={()=>clickable&&setActionId(a.id)}
               style={{width:"100%",textAlign:"left",background:C.white,border:`1px solid ${C.border}`,
-                borderRadius:12,padding:"14px 16px",fontFamily:F,cursor:clickable?"pointer":"default"}}>
+                borderLeft:`3px solid ${sc.color}`,
+                borderRadius:12,padding:"14px 16px",fontFamily:F,cursor:clickable?"pointer":"default",
+                transition:"box-shadow .15s ease-out"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                 <span style={{fontSize:15,fontWeight:700,color:C.ink}}>{a.cliente}</span>
-                <span style={{fontSize:12,fontWeight:600,color:sc.color,background:sc.bg,
-                  padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,marginLeft:8}}>{sc.label}</span>
+                <span style={{fontSize:11,fontWeight:700,color:sc.color,background:sc.bg,
+                  padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,marginLeft:8,
+                  display:"inline-flex",alignItems:"center",gap:4,letterSpacing:.2}}>
+                  <Ic n={sc.icon} size={10} color={sc.color} w={2.5}/>
+                  {sc.label}
+                </span>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
                 <Ic n="clock" size={13} color={C.muted} w={1.75}/>
@@ -1759,18 +1772,26 @@ const NAV=[
 ];
 
 /* ─── LOADING SCREEN ─────────────────────────────────────────────────────── */
-function Loading(){{
+function Loading(){
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-      height:"100vh",background:C.bg,gap:12}}>
-      <div style={{width:40,height:40,borderRadius:10,background:C.ink,display:"flex",
-        alignItems:"center",justifyContent:"center"}}>
-        <Ic n="scissors" size={20} color="#fff" w={2}/>
+      height:"100vh",background:C.white,gap:16}}>
+      <div style={{position:"relative"}}>
+        <div style={{width:64,height:64,borderRadius:20,background:C.accent,display:"flex",
+          alignItems:"center",justifyContent:"center",
+          boxShadow:"0 8px 32px rgba(59,42,34,.25)"}}>
+          <Ic n="scissors" size={28} color="#fff" w={1.75}/>
+        </div>
+        <div style={{position:"absolute",inset:-6,borderRadius:26,border:`2px solid ${C.accent}`,
+          opacity:.3,animation:"pulse 1.6s ease-in-out infinite"}}/>
       </div>
-      <div style={{fontSize:14,color:C.muted}}>Carregando…</div>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:17,fontWeight:800,color:C.ink,letterSpacing:-.3,fontFamily:F}}>Estúdio</div>
+        <div style={{fontSize:13,color:C.muted,marginTop:3,fontFamily:F}}>carregando…</div>
+      </div>
     </div>
   );
-}}
+}
 
 export default function App(){
   const anyModal = useAnyModalOpen();
@@ -1935,17 +1956,19 @@ export default function App(){
           return(
             <button key={t.id} onClick={()=>setAba(t.id)} style={{flex:1,background:"none",border:"none",
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-              gap:4,padding:"10px 4px 8px",position:"relative",fontFamily:F,minHeight:62}}>
-              {active&&<div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
-                width:20,height:3,borderRadius:"0 0 3px 3px",background:C.accent}}/>}
+              gap:3,padding:"8px 4px 6px",position:"relative",fontFamily:F,minHeight:60}}>
               <div style={{position:"relative"}}>
-                <Ic n={t.icon} size={22} color={active?C.accent:C.muted} w={active?2.2:1.7}/>
-                {badge&&<div style={{position:"absolute",top:-3,right:-4,width:15,height:15,
-                  borderRadius:"50%",background:C.red,border:`2px solid ${C.white}`,
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:8,fontWeight:800,color:"#fff"}}>{alertas}</div>}
+                <div style={{background:active?C.accentBg:"transparent",borderRadius:18,
+                  padding:"6px 14px",display:"flex",alignItems:"center",justifyContent:"center",
+                  transition:"background .2s ease-out,padding .2s ease-out",
+                  minWidth:48,minHeight:32}}>
+                  <Ic n={t.icon} size={21} color={active?C.accent:C.muted} w={active?2.2:1.75}/>
+                </div>
+                {badge&&<div style={{position:"absolute",top:2,right:6,width:8,height:8,
+                  borderRadius:"50%",background:C.red,border:`2px solid ${C.white}`}}/>}
               </div>
-              <span style={{fontSize:10,fontWeight:active?700:500,color:active?C.accent:C.muted}}>{t.label}</span>
+              <span style={{fontSize:10,fontWeight:active?800:500,color:active?C.accent:C.muted,
+                letterSpacing:active?.1:0,transition:"color .2s ease-out"}}>{t.label}</span>
             </button>
           );
         })}
