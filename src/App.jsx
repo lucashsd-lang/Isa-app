@@ -7,6 +7,57 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrbGxwbG12ZHFveG1hd3p1aHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjI3NzMsImV4cCI6MjA5NTQzODc3M30.GJVCOAZTxSVwfFLE7fLJRMmnngQifjsWmglOxhxZmOA"
 );
 
+/* ─── CONSTANTS ──────────────────────────────────────────────────────────── */
+const F = "'Inter','Segoe UI',system-ui,sans-serif";
+
+const C = {
+  accent:   "#7C3AED",
+  accentBg: "#EDE9FE",
+  accentLt: "#DDD6FE",
+  bg:       "#F8F7FF",
+  bgAlt:    "#F1F0F7",
+  white:    "#FFFFFF",
+  border:   "#E5E3F0",
+  borderDk: "#C4C0DB",
+  ink:      "#1A1523",
+  sub:      "#4A4558",
+  muted:    "#8B85A1",
+  green:    "#059669",
+  greenBg:  "#D1FAE5",
+  red:      "#DC2626",
+  redBg:    "#FEE2E2",
+};
+
+const HOJE    = new Date();
+const TODAY   = HOJE.toISOString().slice(0,10);
+const DSEM    = ['D','S','T','Q','Q','S','S'];
+const MESES   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES3  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const UNITS   = ['un','g','kg','ml','L','pç'];
+const FIN0    = Array.from({length:12},()=>({r:0,c:0}));
+
+const pad       = n => String(n).padStart(2,'0');
+const brl       = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const brlK      = v => { const n=Number(v||0); return n>=1000?'R$'+(n/1000).toFixed(1)+'k':brl(n); };
+const fmtBR     = iso => { if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
+const makeISO   = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const offsetDate= n => { const d=new Date(HOJE); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const inits     = nome => (nome||'').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+
+function GS(){
+  return(
+    <style>{`
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+      body{overscroll-behavior:none;}
+      button{cursor:pointer;font-family:${F};}
+      input,select,textarea{font-family:${F};}
+      @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+      @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+      ::-webkit-scrollbar{display:none;}
+    `}</style>
+  );
+}
+
 /* ─── GLOBAL MODAL STATE ─────────────────────────────────────────────────── */
 let _modalOpen = false;
 const _subs = new Set();
