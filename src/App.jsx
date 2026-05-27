@@ -296,7 +296,7 @@ function Btn({children,variant="primary",onClick,full,disabled,style={},icon,siz
   return(
     <button onClick={onClick} disabled={disabled} style={{
       display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-      background:bg,color,border:bd,borderRadius:10,padding:sz.p,
+      background:bg,color,border:bd,borderRadius:variant==="primary"?999:10,padding:sz.p,
       fontSize:sz.fs,fontWeight:700,cursor:disabled?"not-allowed":"pointer",
       opacity:disabled?.4:1,width:full?"100%":"auto",minHeight:44,
       whiteSpace:"nowrap",fontFamily:F,flexShrink:0,
@@ -652,9 +652,12 @@ function FinalizarScreen({open,agFin,onClose,prodUsados,setProdUsados,servicosEx
 }
 
 /* ─── AGENDA ─────────────────────────────────────────────────────────────── */
-function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
+function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
   const [weekOffset,setWeekOffset]=useState(0);
   const [sel,setSel]=useState(TODAY);
+  const [calExpanded,setCalExpanded]=useState(false);
+  const [calMonth,setCalMonth]=useState(HOJE.getMonth());
+  const [calYear,setCalYear]=useState(HOJE.getFullYear());
   const [formOpen,setFormOpen]=useState(false);
   const [actionId,setActionId]=useState(null);
   const [finId,setFinId]=useState(null);
@@ -671,12 +674,6 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
     return Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
   },[weekOffset]);
 
-  const weekLabel=useMemo(()=>{
-    const d=new Date(weekDays[3]+"T00:00:00");
-    const s=d.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-    return s.charAt(0).toUpperCase()+s.slice(1);
-  },[weekDays]);
-
   const dodia=useMemo(()=>ags.filter(a=>a.data===sel).sort((a,b)=>a.hora.localeCompare(b.hora)),[ags,sel]);
   const agAction=actionId?ags.find(a=>a.id===actionId):null;
   const agFin=finId?ags.find(a=>a.id===finId):null;
@@ -684,11 +681,52 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
   const isNotAttended=a=>a.status==="agendado"||a.status==="confirmado";
 
   const SC={
-    agendado:   {label:"Agendada",  color:"#059669",bg:"#D1FAE5",icon:"clock"},
-    confirmado: {label:"Confirmada",color:"#2563EB",bg:"#DBEAFE",icon:"check"},
-    concluido:  {label:"Concluída", color:"#6B7280",bg:"#F3F4F6",icon:"check"},
-    cancelado:  {label:"Cancelou",  color:"#DC2626",bg:"#FEE2E2",icon:"x"},
+    agendado:   {label:"Agendada",  color:"#059669",icon:"clock"},
+    confirmado: {label:"Confirmada",color:"#2563EB",icon:"check"},
+    concluido:  {label:"Concluída", color:"#6B7280",icon:"check"},
+    cancelado:  {label:"Cancelou",  color:"#DC2626",icon:"x"},
   };
+
+  function handleSelDate(iso){
+    setSel(iso);
+    const d=new Date(iso+"T00:00:00");
+    setCalMonth(d.getMonth());
+    setCalYear(d.getFullYear());
+    if(!calExpanded){
+      const todayStart=new Date(HOJE);
+      todayStart.setDate(todayStart.getDate()-todayStart.getDay());
+      const selStart=new Date(d);
+      selStart.setDate(selStart.getDate()-selStart.getDay());
+      setWeekOffset(Math.round((selStart-todayStart)/(7*24*3600*1000)));
+    }
+  }
+
+  function goToday(){
+    setSel(TODAY);
+    setWeekOffset(0);
+    setCalMonth(HOJE.getMonth());
+    setCalYear(HOJE.getFullYear());
+  }
+
+  function prevCal(){
+    if(calExpanded){
+      let m=calMonth-1,y=calYear;
+      if(m<0){m=11;y--;}
+      setCalMonth(m);setCalYear(y);
+    } else {
+      setWeekOffset(w=>w-1);
+    }
+  }
+
+  function nextCal(){
+    if(calExpanded){
+      let m=calMonth+1,y=calYear;
+      if(m>11){m=0;y++;}
+      setCalMonth(m);setCalYear(y);
+    } else {
+      setWeekOffset(w=>w+1);
+    }
+  }
 
   function salvar(){
     if(!form.cliente||!form.valor) return;
@@ -740,56 +778,62 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
 
   const custoTotal=prodUsados.reduce((s,u)=>s+u.qtd*u.custo,0);
 
+  const monthLabel=`${MESES[calMonth]} ${calYear}`;
+
   return(
     <div>
-      {/* Month header + week navigation */}
+      {/* Header: month toggle + today + prev/next */}
       <div style={{padding:"14px 16px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {onMenu&&(
-            <button onClick={onMenu} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border}`,
-              background:C.white,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2} strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-          )}
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <Ic n="calendar" size={15} color={C.ink} w={2}/>
-            <span style={{fontSize:15,fontWeight:700,color:C.ink,fontFamily:F}}>{weekLabel}</span>
-          </div>
-        </div>
-        <div style={{display:"flex",gap:4}}>
-          <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <button onClick={()=>setCalExpanded(v=>!v)}
+          style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,fontFamily:F,cursor:"pointer"}}>
+          <span style={{fontSize:16,fontWeight:800,color:C.ink,fontFamily:F}}>{monthLabel}</span>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2.5} strokeLinecap="round"
+            style={{transform:calExpanded?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s ease",flexShrink:0}}>
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={goToday} style={{height:32,padding:"0 14px",borderRadius:999,
+            border:`1.5px solid ${C.ink}`,background:"transparent",color:C.ink,
+            fontSize:12,fontWeight:700,fontFamily:F,cursor:"pointer",whiteSpace:"nowrap"}}>Hoje</button>
+          <button onClick={prevCal} style={{width:36,height:36,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <Ic n="chevL" size={16} color={C.ink} w={2}/>
           </button>
-          <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <button onClick={nextCal} style={{width:36,height:36,borderRadius:10,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <Ic n="chevR" size={16} color={C.ink} w={2}/>
           </button>
         </div>
       </div>
 
-      {/* Week strip */}
-      <div style={{padding:"0 12px 14px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
-          {DSEM.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,color:C.muted}}>{d}</div>)}
+      {/* Calendar: week strip or full month */}
+      {!calExpanded?(
+        <div style={{padding:"0 12px 14px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+            {DSEM.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,color:C.muted}}>{d}</div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+            {weekDays.map(d=>{
+              const dt=new Date(d+"T00:00:00");
+              const isSel=d===sel,isT=d===TODAY;
+              const hasCnt=ags.some(a=>a.data===d);
+              return(
+                <button key={d} onClick={()=>handleSelDate(d)}
+                  style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",background:"none",border:"none",cursor:"pointer"}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                    background:isSel?C.ink:"transparent"}}>
+                    <span style={{fontSize:15,fontWeight:isSel||isT?700:400,color:isSel?"#fff":isT?C.accent:C.ink}}>{dt.getDate()}</span>
+                  </div>
+                  <div style={{width:4,height:4,borderRadius:"50%",background:hasCnt&&!isSel?C.accent:"transparent"}}/>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
-          {weekDays.map(d=>{
-            const dt=new Date(d+"T00:00:00");
-            const isSel=d===sel,isT=d===TODAY;
-            const hasCnt=ags.some(a=>a.data===d);
-            return(
-              <button key={d} onClick={()=>setSel(d)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",background:"none",border:"none"}}>
-                <div style={{width:36,height:36,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-                  background:isSel?C.ink:"transparent"}}>
-                  <span style={{fontSize:15,fontWeight:isSel||isT?700:400,color:isSel?"#fff":isT?C.accent:C.ink}}>{dt.getDate()}</span>
-                </div>
-                <div style={{width:4,height:4,borderRadius:"50%",background:hasCnt&&!isSel?C.accent:"transparent"}}/>
-              </button>
-            );
-          })}
+      ):(
+        <div style={{padding:"0 12px 14px"}}>
+          <CalGrid year={calYear} month={calMonth} ags={ags} sel={sel} onSel={handleSelDate}/>
         </div>
-      </div>
+      )}
 
       {/* Day header */}
       <div style={{padding:"0 16px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.border}`}}>
@@ -799,10 +843,10 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
           </div>
           <div style={{fontSize:13,color:C.muted,marginTop:1}}>{dodia.length} cliente{dodia.length!==1?"s":""}</div>
         </div>
-        <button onClick={()=>setFormOpen(true)} style={{height:40,padding:"0 18px",borderRadius:20,border:"none",
+        <button onClick={()=>setFormOpen(true)} style={{height:40,padding:"0 18px",borderRadius:999,border:"none",
           background:C.ink,color:"#fff",fontWeight:700,fontSize:13,
-          display:"flex",alignItems:"center",gap:6,fontFamily:F}}>
-          <Ic n="plus" size={14} color="#fff" w={2.5}/>Nova cliente
+          display:"flex",alignItems:"center",gap:6,fontFamily:F,cursor:"pointer",whiteSpace:"nowrap"}}>
+          <Ic n="plus" size={14} color="#fff" w={2.5}/>Novo agendamento
         </button>
       </div>
 
@@ -820,13 +864,12 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
           return(
             <button key={a.id} onClick={()=>clickable&&setActionId(a.id)}
               style={{width:"100%",textAlign:"left",background:C.white,border:`1px solid ${C.border}`,
-                borderLeft:`3px solid ${sc.color}`,
-                borderRadius:12,padding:"14px 16px",fontFamily:F,cursor:clickable?"pointer":"default",
-                transition:"box-shadow .15s ease-out"}}>
+                borderRadius:12,padding:"14px 16px",fontFamily:F,cursor:clickable?"pointer":"default"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                 <span style={{fontSize:15,fontWeight:700,color:C.ink}}>{a.cliente}</span>
-                <span style={{fontSize:11,fontWeight:700,color:sc.color,background:sc.bg,
+                <span style={{fontSize:11,fontWeight:700,color:sc.color,
                   padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,marginLeft:8,
+                  border:`1.5px solid ${sc.color}`,background:"transparent",
                   display:"inline-flex",alignItems:"center",gap:4,letterSpacing:.2}}>
                   <Ic n={sc.icon} size={10} color={sc.color} w={2.5}/>
                   {sc.label}
@@ -857,7 +900,7 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
             {agAction.status==="agendado"&&(
               <button onClick={()=>confirmarHorario(agAction.id)}
                 style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
-                  background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+                  background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left",cursor:"pointer"}}>
                 <div style={{width:36,height:36,borderRadius:8,background:C.accentBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                   <Ic n="check" size={16} color={C.accent} w={2.5}/>
                 </div>
@@ -869,7 +912,7 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
             )}
             <button onClick={()=>iniciarAtendimento(agAction.id)}
               style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
-                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left",cursor:"pointer"}}>
               <div style={{width:36,height:36,borderRadius:8,background:C.greenBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <Ic n="scissors" size={16} color={C.green} w={2}/>
               </div>
@@ -880,7 +923,7 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos,onMenu}){
             </button>
             <button onClick={()=>setConfirmCancel(agAction.id)}
               style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
-                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left",cursor:"pointer"}}>
               <div style={{width:36,height:36,borderRadius:8,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <Ic n="x" size={16} color={C.red} w={2.5}/>
               </div>
@@ -1427,7 +1470,7 @@ function Financeiro({ags,prods}){
   return(
     <div>
       <div style={{padding:"16px 16px 14px"}}>
-        <span style={{fontSize:22,fontWeight:800,color:C.ink,letterSpacing:-.5}}>Relatórios</span>
+        <span style={{fontSize:22,fontWeight:800,color:C.ink,letterSpacing:-.5}}>Financeiro</span>
       </div>
 
       <div style={{display:"flex",gap:6,padding:"0 16px 14px"}}>
@@ -1712,63 +1755,13 @@ function Servicos({servicos,setServicos,toast}){
 }
 
 
-/* ─── SIDE MENU ──────────────────────────────────────────────────────────── */
-function SideDrawer({open,onClose,aba,setAba,alertas}){
-  useEffect(()=>{ if(open){ _openModal(); } return()=>{ _closeModal(); }; },[open]);
-  if(!open) return null;
-  return(
-    <div style={{position:"absolute",inset:0,zIndex:850}}>
-      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.4)",backdropFilter:"blur(2px)"}}/>
-      <div style={{position:"absolute",top:0,left:0,bottom:0,width:"78%",maxWidth:280,
-        background:C.white,display:"flex",flexDirection:"column",
-        boxShadow:"4px 0 24px rgba(0,0,0,.14)",animation:"slideFromLeft .22s ease"}}>
-        <div style={{padding:"28px 20px 22px",background:C.accent}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,.15)",
-              display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <Ic n="scissors" size={20} color="#fff" w={2}/>
-            </div>
-            <div>
-              <div style={{fontSize:17,fontWeight:800,color:"#fff",letterSpacing:-.3}}>Estúdio</div>
-              <div style={{fontSize:12,color:"rgba(255,255,255,.65)"}}>Gestão completa</div>
-            </div>
-          </div>
-        </div>
-        <div style={{flex:1,padding:"10px 8px",overflowY:"auto"}}>
-          {NAV.map(t=>{
-            const active=aba===t.id,badge=t.id==="estoque"&&alertas>0;
-            return(
-              <button key={t.id} onClick={()=>{setAba(t.id);onClose();}}
-                style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"13px 14px",
-                  borderRadius:10,border:"none",textAlign:"left",fontFamily:F,marginBottom:2,
-                  background:active?C.accentBg:"transparent",cursor:"pointer"}}>
-                <div style={{position:"relative",flexShrink:0}}>
-                  <Ic n={t.icon} size={20} color={active?C.accent:C.muted} w={active?2.2:1.75}/>
-                  {badge&&<div style={{position:"absolute",top:-2,right:-3,width:8,height:8,
-                    borderRadius:"50%",background:C.red,border:`2px solid ${C.white}`}}/>}
-                </div>
-                <span style={{fontSize:15,fontWeight:active?700:500,
-                  color:active?C.accent:C.ink,flex:1}}>{t.label}</span>
-                {active&&<Ic n="chevR" size={14} color={C.accent} w={2.5}/>}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{padding:"16px 20px",borderTop:`1px solid ${C.border}`}}>
-          <div style={{fontSize:12,color:C.muted,fontFamily:F}}>Estúdio App · v1.0</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── APP ────────────────────────────────────────────────────────────────── */
 const NAV=[
   {id:"agenda",    label:"Agenda",    icon:"calendar"},
   {id:"clientes",  label:"Clientes",  icon:"users"},
   {id:"estoque",   label:"Estoque",   icon:"box"},
   {id:"servicos",  label:"Serviços",  icon:"service"},
-  {id:"relatorios",label:"Relatórios",icon:"chart"},
+  {id:"relatorios",label:"Financeiro",icon:"chart"},
 ];
 
 /* ─── LOADING SCREEN ─────────────────────────────────────────────────────── */
@@ -1797,7 +1790,6 @@ export default function App(){
   const anyModal = useAnyModalOpen();
   const [aba,setAba]=useState("agenda");
   const [loading,setLoading]=useState(true);
-  const [menuOpen,setMenuOpen]=useState(false);
   const [ags,setAgs]=useState([]);
   const [clis,setClis]=useState([]);
   const [prods,setProds]=useState([]);
@@ -1938,16 +1930,12 @@ export default function App(){
 
       {/* Content */}
       <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-        {aba==="agenda"    &&<Agenda     ags={ags}   setAgs={dbSetAgs}   clis={clis} prods={prods} setProds={dbSetProds} toast={toast} servicos={servicos} onMenu={()=>setMenuOpen(true)}/>}
+        {aba==="agenda"    &&<Agenda     ags={ags}   setAgs={dbSetAgs}   clis={clis} prods={prods} setProds={dbSetProds} toast={toast} servicos={servicos}/>}
         {aba==="clientes"  &&<Clientes   clis={clis} setClis={dbSetClis} ags={ags} setAgs={dbSetAgs} toast={toast} servicos={servicos}/>}
         {aba==="estoque"   &&<Estoque    prods={prods} setProds={dbSetProds} toast={toast}/>}
         {aba==="servicos"  &&<Servicos   servicos={servicos} setServicos={dbSetServicos} toast={toast}/>}
         {aba==="relatorios"&&<Financeiro ags={ags} prods={prods}/>}
       </div>
-
-      {/* Side menu */}
-      <SideDrawer open={menuOpen} onClose={()=>setMenuOpen(false)}
-        aba={aba} setAba={setAba} alertas={alertas}/>
 
       {/* Bottom nav */}
       <div style={{background:C.white,borderTop:`1px solid ${C.border}`,display:anyModal?"none":"flex",flexShrink:0,paddingBottom:"env(safe-area-inset-bottom)"}}>
