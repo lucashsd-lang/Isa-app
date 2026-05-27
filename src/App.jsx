@@ -645,46 +645,73 @@ function FinalizarScreen({open,agFin,onClose,prodUsados,setProdUsados,servicosEx
 
 /* ─── AGENDA ─────────────────────────────────────────────────────────────── */
 function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
-  const [year,setYear]=useState(HOJE.getFullYear());
-  const [month,setMonth]=useState(HOJE.getMonth());
-  const [calOpen,setCalOpen]=useState(false);
+  const [weekOffset,setWeekOffset]=useState(0);
   const [sel,setSel]=useState(TODAY);
   const [formOpen,setFormOpen]=useState(false);
-  const [detail,setDetail]=useState(null);
+  const [actionId,setActionId]=useState(null);
   const [finId,setFinId]=useState(null);
   const [prodUsados,setProdUsados]=useState([]);
   const [confirmCancel,setConfirmCancel]=useState(null);
   const [servicosExtra,setServicosExtra]=useState([]);
   const [addServOpen,setAddServOpen]=useState(false);
   const [addServForm,setAddServForm]=useState({servico:"Corte",valor:""});
-  const [form,setForm]=useState({cliente:"",servico:servicos[0]?.nome||"",hora:"09:00",valor:""});
+  const [form,setForm]=useState({cliente:"",servico:servicos[0]?.nome||"",hora:"09:00",horaFim:"11:00",valor:""});
+
+  const weekDays=useMemo(()=>{
+    const base=new Date(HOJE);
+    base.setDate(base.getDate()-base.getDay()+(weekOffset*7));
+    return Array.from({length:7},(_,i)=>{const d=new Date(base);d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
+  },[weekOffset]);
+
+  const weekLabel=useMemo(()=>{
+    const d=new Date(weekDays[3]+"T00:00:00");
+    const s=d.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
+    return s.charAt(0).toUpperCase()+s.slice(1);
+  },[weekDays]);
 
   const dodia=useMemo(()=>ags.filter(a=>a.data===sel).sort((a,b)=>a.hora.localeCompare(b.hora)),[ags,sel]);
-  const agSel=detail?ags.find(a=>a.id===detail):null;
+  const agAction=actionId?ags.find(a=>a.id===actionId):null;
   const agFin=finId?ags.find(a=>a.id===finId):null;
-  const SC={agendado:C.accent,concluido:C.green,cancelado:C.red};
-  const SBG={agendado:C.accentBg,concluido:C.greenBg,cancelado:C.redBg};
-  const SL={agendado:"Agendado",concluido:"Concluído",cancelado:"Cancelado"};
+  const selDt=new Date(sel+"T00:00:00");
+  const isNotAttended=a=>a.status==="agendado"||a.status==="confirmado";
 
-  function navMonth(dir){let m=month+dir,y=year;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setMonth(m);setYear(y);}
-  function pickDate(iso){setSel(iso);const d=new Date(iso+"T00:00:00");setYear(d.getFullYear());setMonth(d.getMonth());}
+  const SC={
+    agendado:   {label:"Agendada",  color:"#059669",bg:"#D1FAE5"},
+    confirmado: {label:"Confirmada",color:"#059669",bg:"#D1FAE5"},
+    concluido:  {label:"Concluída", color:"#6B7280",bg:"#F3F4F6"},
+    cancelado:  {label:"Cancelou",  color:"#DC2626",bg:"#FEE2E2"},
+  };
 
   function salvar(){
     if(!form.cliente||!form.valor) return;
-    setAgs(p=>[...p,{id:`ag-${Date.now()}`,data:sel,hora:form.hora,
+    setAgs(p=>[...p,{id:`ag-${Date.now()}`,data:sel,hora:form.hora,horaFim:form.horaFim,
       cliente:form.cliente,servico:form.servico,
       valor:parseFloat(form.valor).toFixed(2),status:"agendado",produtosUsados:[]}]);
     setFormOpen(false);
-    setForm({cliente:"",servico:servicos[0]?.nome||"",hora:"09:00",valor:""});
+    setForm({cliente:"",servico:servicos[0]?.nome||"",hora:"09:00",horaFim:"11:00",valor:""});
     toast("Agendamento criado com sucesso");
   }
 
-  function abrirFinalizar(id){setFinId(id);setProdUsados([]);setServicosExtra([]);setDetail(null);}
+  function confirmarHorario(id){
+    setAgs(p=>p.map(a=>a.id===id?{...a,status:"confirmado"}:a));
+    setActionId(null);
+    toast("Horário confirmado");
+  }
+
+  function cancelarAg(id){
+    setAgs(p=>p.map(a=>a.id===id?{...a,status:"cancelado"}:a));
+    setActionId(null);setConfirmCancel(null);
+    toast("Agendamento cancelado","warn");
+  }
+
+  function iniciarAtendimento(id){
+    setActionId(null);setFinId(id);setProdUsados([]);setServicosExtra([]);
+  }
 
   function confirmarFinalizar(pagamento="pix"){
     const agora=`${pad(HOJE.getHours())}:${pad(HOJE.getMinutes())}`;
     const totalServ=agFin?parseFloat(agFin.valor)+servicosExtra.reduce((s,x)=>s+parseFloat(x.valor||0),0):0;
-    setAgs(p=>p.map(a=>a.id===finId?{...a,status:"concluido",produtosUsados:prodUsados,valorFinal:totalServ.toFixed(2),servicosExtra,pagamento}:a));
+    setAgs(p=>p.map(a=>a.id===finId?{...a,status:"concluido",produtosUsados,valorFinal:totalServ.toFixed(2),servicosExtra,pagamento}:a));
     if(prodUsados.length>0){
       setProds(prev=>prev.map(pr=>{
         const uso=prodUsados.find(u=>u.pid===pr.id);
@@ -703,122 +730,144 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
     if(pr) setProdUsados(prev=>[...prev,{pid,nome:pr.nome,und:"g",custo:pr.custo,qtd:0}]);
   }
 
-  function cancelarAg(id){
-    setAgs(p=>p.map(a=>a.id===id?{...a,status:"cancelado"}:a));
-    setDetail(null);setConfirmCancel(null);
-    toast("Agendamento cancelado","warn");
-  }
-
   const custoTotal=prodUsados.reduce((s,u)=>s+u.qtd*u.custo,0);
-  const recDia=dodia.filter(a=>a.status==="concluido").reduce((s,a)=>s+parseFloat(a.valor),0);
-  const selDt=new Date(sel+"T00:00:00");
-  const strip=useMemo(()=>Array.from({length:14},(_,i)=>offsetDate(i-2)),[]);
 
   return(
     <div>
-      {/* Page header — inline, no sticky global header */}
-      <div style={{padding:"16px 16px 0",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:22,fontWeight:800,color:C.ink,letterSpacing:-.5,lineHeight:1.1}}>
-            {selDt.toLocaleDateString("pt-BR",{weekday:"long"})}
-          </div>
-          <div style={{fontSize:14,color:C.muted,marginTop:2}}>
-            {selDt.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"})}
-          </div>
+      {/* Month header + week navigation */}
+      <div style={{padding:"16px 16px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Ic n="calendar" size={16} color={C.ink} w={2}/>
+          <span style={{fontSize:16,fontWeight:700,color:C.ink,fontFamily:F}}>{weekLabel}</span>
         </div>
-        <div style={{display:"flex",gap:8,flexShrink:0,paddingTop:2}}>
-          <button onClick={()=>setCalOpen(v=>!v)} style={{width:40,height:40,borderRadius:8,
-            border:`1.5px solid ${calOpen?C.accent:C.border}`,background:calOpen?C.accentBg:C.white,
-            display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <Ic n="calendar" size={18} color={calOpen?C.accent:C.sub} w={2}/>
+        <div style={{display:"flex",gap:4}}>
+          <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Ic n="chevL" size={16} color={C.ink} w={2}/>
           </button>
-          <button onClick={()=>setFormOpen(true)} style={{height:40,padding:"0 14px",borderRadius:8,
-            border:"none",background:C.accent,color:"#fff",fontWeight:700,fontSize:13,
-            display:"flex",alignItems:"center",gap:6,fontFamily:F}}>
-            <Ic n="plus" size={15} color="#fff" w={2.5}/>Novo
+          <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Ic n="chevR" size={16} color={C.ink} w={2}/>
           </button>
         </div>
       </div>
 
-      {/* Calendar */}
-      {calOpen&&(
-        <div style={{padding:"12px 16px 0"}}>
-          <Card style={{padding:"14px 16px"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <button onClick={()=>navMonth(-1)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="chevL" size={16} color={C.ink} w={2}/></button>
-              <span style={{fontWeight:700,fontSize:15,color:C.ink}}>{MESES[month]} {year}</span>
-              <button onClick={()=>navMonth(1)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${C.border}`,background:C.white,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="chevR" size={16} color={C.ink} w={2}/></button>
-            </div>
-            <CalGrid year={year} month={month} ags={ags} sel={sel} onSel={d=>{pickDate(d);}}/>
-            <div style={{display:"flex",gap:16,marginTop:10,paddingTop:10,borderTop:`1px solid ${C.border}`}}>
-              {[{c:C.green,l:"Concluído"},{c:C.accent,l:"Agendado"}].map(x=>(
-                <div key={x.l} style={{display:"flex",alignItems:"center",gap:5}}>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:x.c}}/>
-                  <span style={{fontSize:11,color:C.muted}}>{x.l}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+      {/* Week strip */}
+      <div style={{padding:"0 12px 14px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+          {DSEM.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,color:C.muted}}>{d}</div>)}
         </div>
-      )}
-
-      {/* Day strip */}
-      {!calOpen&&(
-        <div style={{display:"flex",gap:4,overflowX:"auto",padding:"12px 16px 0",scrollbarWidth:"none"}}>
-          {strip.map(d=>{
-            const s=d===sel,isT=d===TODAY,cnt=ags.filter(a=>a.data===d).length;
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {weekDays.map(d=>{
             const dt=new Date(d+"T00:00:00");
+            const isSel=d===sel,isT=d===TODAY;
+            const hasCnt=ags.some(a=>a.data===d);
             return(
-              <button key={d} onClick={()=>pickDate(d)} style={{minWidth:48,padding:"8px 2px",borderRadius:8,
-                border:"none",background:s?C.accent:isT?C.accentBg:"transparent",
-                display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
-                <span style={{fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,color:s?"rgba(255,255,255,.8)":C.muted}}>
-                  {dt.toLocaleDateString("pt-BR",{weekday:"short"})}
-                </span>
-                <span style={{fontSize:18,fontWeight:800,lineHeight:1,color:s?"#fff":isT?C.accent:C.ink}}>{dt.getDate()}</span>
-                <div style={{width:5,height:5,borderRadius:"50%",background:cnt>0?(s?"rgba(255,255,255,.7)":C.accent):"transparent"}}/>
+              <button key={d} onClick={()=>setSel(d)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",background:"none",border:"none"}}>
+                <div style={{width:36,height:36,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                  background:isSel?C.ink:"transparent"}}>
+                  <span style={{fontSize:15,fontWeight:isSel||isT?700:400,color:isSel?"#fff":isT?C.accent:C.ink}}>{dt.getDate()}</span>
+                </div>
+                <div style={{width:4,height:4,borderRadius:"50%",background:hasCnt&&!isSel?C.accent:"transparent"}}/>
               </button>
             );
           })}
         </div>
-      )}
+      </div>
 
-      {/* ── Stats linha acima dos cards ── */}
-      <div style={{padding:"12px 16px 8px",display:"flex",alignItems:"center",gap:8,borderBottom:`1px solid ${C.border}`,marginBottom:12}}>
-        <span style={{fontSize:13,color:C.sub,fontWeight:600}}>
-          {dodia.length} agendamento{dodia.length!==1?"s":""}
-        </span>
-        {recDia>0&&(
-          <>
-            <span style={{fontSize:13,color:C.muted}}>·</span>
-            <span style={{fontSize:13,color:C.green,fontWeight:700}}>{brl(recDia)}</span>
-          </>
-        )}
+      {/* Day header */}
+      <div style={{padding:"0 16px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.border}`}}>
+        <div>
+          <div style={{fontSize:17,fontWeight:800,color:C.ink,fontFamily:F,textTransform:"capitalize"}}>
+            {selDt.toLocaleDateString("pt-BR",{weekday:"long"})}
+          </div>
+          <div style={{fontSize:13,color:C.muted,marginTop:1}}>{dodia.length} cliente{dodia.length!==1?"s":""}</div>
+        </div>
+        <button onClick={()=>setFormOpen(true)} style={{height:40,padding:"0 18px",borderRadius:20,border:"none",
+          background:C.ink,color:"#fff",fontWeight:700,fontSize:13,
+          display:"flex",alignItems:"center",gap:6,fontFamily:F}}>
+          <Ic n="plus" size={14} color="#fff" w={2.5}/>Nova cliente
+        </button>
       </div>
 
       {/* Appointment list */}
-      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
         {dodia.length===0&&(
           <div style={{textAlign:"center",padding:"40px 20px",border:`1.5px dashed ${C.border}`,borderRadius:12,background:C.white}}>
             <Ic n="calendar" size={32} color={C.border} style={{margin:"0 auto 8px"}}/>
             <div style={{color:C.muted,fontSize:14}}>Nenhum agendamento neste dia</div>
           </div>
         )}
-        {dodia.map(a=>(
-          <Card key={a.id} onClick={()=>setDetail(a.id)} style={{cursor:"pointer",padding:"14px"}}>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:700,color:C.ink,marginBottom:6}}>{a.cliente}</div>
-                <Badge color={SC[a.status]} bg={SBG[a.status]}>{a.servico}</Badge>
+        {dodia.map(a=>{
+          const sc=SC[a.status]||SC.agendado;
+          const clickable=isNotAttended(a);
+          return(
+            <button key={a.id} onClick={()=>clickable&&setActionId(a.id)}
+              style={{width:"100%",textAlign:"left",background:C.white,border:`1px solid ${C.border}`,
+                borderRadius:12,padding:"14px 16px",fontFamily:F,cursor:clickable?"pointer":"default"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <span style={{fontSize:15,fontWeight:700,color:C.ink}}>{a.cliente}</span>
+                <span style={{fontSize:12,fontWeight:600,color:sc.color,background:sc.bg,
+                  padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,marginLeft:8}}>{sc.label}</span>
               </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.muted}}>{a.hora}</div>
-                <div style={{fontSize:15,fontWeight:700,color:C.accent,marginTop:3}}>{brl(a.valor)}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                <Ic n="clock" size={13} color={C.muted} w={1.75}/>
+                <span style={{fontSize:13,color:C.sub}}>{a.hora}{a.horaFim?` - ${a.horaFim}`:""}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <Ic n="service" size={13} color={C.muted} w={1.75}/>
+                <span style={{fontSize:13,color:C.sub}}>{a.servico}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Action sheet */}
+      <Drawer open={!!actionId&&!finId} onClose={()=>setActionId(null)} title={agAction?.cliente||""}>
+        {agAction&&(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{background:C.bgAlt,borderRadius:10,padding:"10px 14px",marginBottom:4}}>
+              <div style={{fontSize:13,color:C.sub,fontWeight:500}}>
+                {agAction.hora}{agAction.horaFim?` - ${agAction.horaFim}`:""} · {agAction.servico}
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+            {agAction.status==="agendado"&&(
+              <button onClick={()=>confirmarHorario(agAction.id)}
+                style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
+                  background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+                <div style={{width:36,height:36,borderRadius:8,background:C.accentBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Ic n="check" size={16} color={C.accent} w={2.5}/>
+                </div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14,color:C.ink}}>Confirmar horário</div>
+                  <div style={{fontSize:12,color:C.muted,marginTop:1}}>Marcar como confirmada</div>
+                </div>
+              </button>
+            )}
+            <button onClick={()=>iniciarAtendimento(agAction.id)}
+              style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
+                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+              <div style={{width:36,height:36,borderRadius:8,background:C.greenBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Ic n="scissors" size={16} color={C.green} w={2}/>
+              </div>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:C.ink}}>Iniciar atendimento</div>
+                <div style={{fontSize:12,color:C.muted,marginTop:1}}>Registrar serviço e produtos</div>
+              </div>
+            </button>
+            <button onClick={()=>setConfirmCancel(agAction.id)}
+              style={{width:"100%",padding:"14px",borderRadius:10,border:`1px solid ${C.border}`,
+                background:C.white,display:"flex",alignItems:"center",gap:12,fontFamily:F,textAlign:"left"}}>
+              <div style={{width:36,height:36,borderRadius:8,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <Ic n="x" size={16} color={C.red} w={2.5}/>
+              </div>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:C.red}}>Cancelar</div>
+                <div style={{fontSize:12,color:C.muted,marginTop:1}}>Remover este agendamento</div>
+              </div>
+            </button>
+          </div>
+        )}
+      </Drawer>
 
       {/* New appointment */}
       <Drawer open={formOpen} onClose={()=>setFormOpen(false)} title="Novo Agendamento">
@@ -833,52 +882,16 @@ function Agenda({ags,setAgs,clis,prods,setProds,toast,servicos}){
             {servicos.map(s=><option key={s.id}>{s.nome}</option>)}
           </Sel>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <Input label="Horário" type="time" value={form.hora} onChange={e=>setForm({...form,hora:e.target.value})}/>
-            <Input label="Valor (R$)" required type="number" inputMode="decimal" value={form.valor}
-              onChange={e=>setForm({...form,valor:e.target.value})} placeholder="0,00"/>
+            <Input label="Início" type="time" value={form.hora} onChange={e=>setForm({...form,hora:e.target.value})}/>
+            <Input label="Término" type="time" value={form.horaFim} onChange={e=>setForm({...form,horaFim:e.target.value})}/>
           </div>
+          <Input label="Valor (R$)" required type="number" inputMode="decimal" value={form.valor}
+            onChange={e=>setForm({...form,valor:e.target.value})} placeholder="0,00"/>
           <Btn full icon="check" onClick={salvar} disabled={!form.cliente||!form.valor}>Confirmar</Btn>
         </div>
       </Drawer>
 
-      {/* Detail */}
-      <Screen open={!!detail&&!finId} onClose={()=>setDetail(null)} title={agSel?.cliente||""}>
-        {agSel&&(
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <Card>
-              <InfoRow icon="tag"   label="Serviço"   value={agSel.servico}/>
-              <InfoRow icon="clock" label="Data / Hora" value={`${fmtBR(agSel.data)} · ${agSel.hora}`}/>
-              <InfoRow icon="tag"   label="Valor"     value={brl(agSel.valor)} accent={C.accent}/>
-              <div style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0 0"}}>
-                <div style={{width:32,height:32,borderRadius:8,background:C.accentBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <Ic n="info" size={15} color={C.accent} w={2}/>
-                </div>
-                <span style={{flex:1,color:C.sub,fontSize:14}}>Status</span>
-                <Badge color={SC[agSel.status]} bg={SBG[agSel.status]}>{SL[agSel.status]}</Badge>
-              </div>
-              {agSel.produtosUsados?.length>0&&(
-                <div style={{marginTop:10,borderTop:`1px solid ${C.border}`,paddingTop:10}}>
-                  <div style={{fontSize:11,fontWeight:700,letterSpacing:.5,color:C.muted,textTransform:"uppercase",marginBottom:8}}>Produtos utilizados</div>
-                  {agSel.produtosUsados.map((u,i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.sub,padding:"3px 0"}}>
-                      <span>{u.nome} · {u.qtd}{u.und}</span>
-                      <span style={{fontWeight:600,color:C.ink}}>-{brl(u.qtd*u.custo)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-            {agSel.status==="agendado"&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,marginTop:4}}>
-                <Btn variant="primary" full icon="check" onClick={()=>abrirFinalizar(agSel.id)}>Finalizar</Btn>
-                <Btn variant="danger" full icon="x" onClick={()=>setConfirmCancel(agSel.id)}>Cancelar</Btn>
-              </div>
-            )}
-          </div>
-        )}
-      </Screen>
-
-      {/* Finalize — comanda */}
+      {/* Finalize */}
       <FinalizarScreen
         open={!!finId} agFin={agFin} onClose={()=>setFinId(null)}
         prodUsados={prodUsados} setProdUsados={setProdUsados}
@@ -1730,7 +1743,7 @@ export default function App(){
 
   /* ── Mappers: DB → App format ──────────────────────────────────────────── */
   function mapAg(r){
-    return{id:r.id,data:r.data,hora:r.hora,cliente:r.cliente,servico:r.servico,
+    return{id:r.id,data:r.data,hora:r.hora,horaFim:r.hora_fim||"",cliente:r.cliente,servico:r.servico,
       valor:String(r.valor),status:r.status||"agendado",pagamento:r.pagamento,
       servicosExtra:r.servicos_extra||[],produtosUsados:r.produtos_usados||[]};
   }
